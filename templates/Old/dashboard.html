@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard</title>
+</head>
+<body>
+    <h1>My Dashboard</h1>
+
+    <h2>Search packets</h2>
+    <form method="get" action="{% url 'search_packets' %}">
+        <input value="" placeholder="keyword" name="keyword" id="keyword" type="text">
+        <button type="submit">Search</button>
+    </form>
+
+    <!-- List of Uploaded Files -->
+    <h2>Uploaded Files</h2>
+    <ul>
+        {% for file in files %}
+            <li>
+                {{ file.name }}
+                <a href="{% url 'analyse_pcap' file.id %}" class="btn btn-primary">Analyze</a>
+            </li>
+        {% empty %}
+            <li>No files uploaded.</li>
+        {% endfor %}
+    </ul>
+
+    <!-- Upload New File Form -->
+    <a href="{% url 'upload_pcap' %}" class="btn btn-success">Upload New File</a>
+   
+</body>
+</html>

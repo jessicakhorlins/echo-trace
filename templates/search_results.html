@@ -1,0 +1,140 @@
+{% extends 'base.html' %}
+
+{% block title %}
+<title>Search Results | EchoTrace</title>
+{% endblock title %}
+
+{% block content %}
+
+
+<section class="bg-gray-50 dark:bg-gray-900 p-3 sm:p-5">
+    <div class="mx-auto max-w-screen-xl px-4 lg:px-12">
+        <h1 class="mb-4 text-2xl font-semibold">Search Results for "{{ keyword }}"</h1>
+        <p class="mb-4 font-medium text-md">{{packets|length}} results</p>
+
+
+        <div class="bg-white dark:bg-gray-800 relative shadow-md sm:rounded-lg overflow-auto">
+            <div class="flex flex-col md:flex-row items-center justify-between space-y-3 md:space-y-0 md:space-x-4 p-4">
+                <div class="w-full">
+                    <form class="flex items-center" method="GET" action="{% url 'search_packets' %}">
+                        <label for="keyword" class="sr-only">Search</label>
+                        <div class="relative w-full mr-3">
+                            <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                                <svg aria-hidden="true" class="w-5 h-5 text-gray-500 dark:text-gray-400" fill="currentColor" viewbox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                                    <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                            <input type="text" name="keyword" value="{{keyword}}" placeholder="keyword" id="keyword" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full pl-10 p-2 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" autocomplete="off" required="">
+                        </div>
+                        <button type="submit" class="w-44 flex items-center justify-center text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-4 py-2 dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none dark:focus:ring-blue-800">
+                        Search
+                        </button>
+                    </form>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                            <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                                <tr>
+                                    <th scope="col" class="px-4 py-3">Identified</th>
+                                    <th scope="col" class="px-4 py-3">HTTP Request</th>
+                                    <th scope="col" class="px-4 py-3">Method</th>
+                                    <th scope="col" class="px-4 py-3">Src IP</th>
+                                    <th scope="col" class="px-4 py-3">Host IP</th>
+                                    <th scope="col" class="px-4 py-3">Port</th>
+                                    <th scope="col" class="px-4 py-3">Protocol</th>
+                                    <th scope="col" class="px-4 py-3">Timestamp</th>
+                                    <th scope="col" class="px-4 py-3">DNS Information</th>
+                                    <th scope="col" class="px-4 py-3">Other Information</th>
+                                    <th scope="col" class="px-4 py-3">
+                                        Actions
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for packet in page_obj %}
+                                <tr class="border-b dark:border-gray-700">
+                                    <td class="px-4 py-3">
+                                        {% if packet.is_brute_force %}
+                                        <span class="bg-indigo-100 text-indigo-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded dark:bg-indigo-900 dark:text-indigo-300">Brute force</span>
+                                        {% elif packet.is_dos %}
+                                        <span class="bg-red-100 text-red-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded dark:bg-red-900 dark:text-red-300">DOS</span>
+                                        {% elif packet.is_sql_injection %}
+                                        <span class="bg-green-100 text-green-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded dark:bg-green-900 dark:text-green-300">SQL Injection</span>
+                                        {% elif packet.is_xss %}
+                                        <span class="bg-yellow-100 text-yellow-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded dark:bg-yellow-900 dark:text-yellow-300">XSS</span>
+                                        {% else %}
+                                        <span class="bg-gray-100 text-gray-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded dark:bg-gray-700 dark:text-gray-300">None</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="px-4 py-3">{{ packet.request_uri }}</td>
+                                    <td class="px-4 py-3">{{ packet.request_method }}</td>
+                                    <td class="px-4 py-3">{{ packet.ip_address }}</td>
+                                    <td class="px-4 py-3">{{ packet.dst_ip_address }}</td>
+                                    <td class="px-4 py-3">{{ packet.port }}</td>
+                                    <td class="px-4 py-3">{{ packet.protocol }}</td>
+                                    <td class="px-4 py-3">{{ packet.timestamp }}</td>                                   
+                                    <td class="px-4 py-3">{{ packet.dns_info }}</td>
+                                    <td class="px-4 py-3">{{ packet.other_info }}</td>
+                                    <td class="px-4 py-3 flex items-center justify-end">
+                                        <button id="pac-{{packet.pk}}-button" data-dropdown-toggle="pac-{{packet.pk}}" class="inline-flex items-center p-0.5 text-sm font-medium text-center text-gray-500 hover:text-gray-800 rounded-lg focus:outline-none dark:text-gray-400 dark:hover:text-gray-100" type="button">
+                                          <svg class="w-5 h-5" aria-hidden="true" fill="currentColor" viewbox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M6 10a2 2 0 11-4 0 2 2 0 014 0zM12 10a2 2 0 11-4 0 2 2 0 014 0zM16 12a2 2 0 100-4 2 2 0 000 4z" />
+                                          </svg>
+                                        </button>
+                                        <div id="pac-{{packet.pk}}" class="hidden z-10 w-44 bg-white rounded divide-y divide-gray-100 shadow dark:bg-gray-700 dark:divide-gray-600">
+                                          <div class="py-1">
+                                            <a href="{% url 'delete_packet' packet.pcap_file.pk packet.pk %}" class="block py-2 px-4 text-sm text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 dark:text-gray-200 dark:hover:text-white">Delete</a>
+                                          </div>
+                                        </div>
+                                    </td>
+                                </tr> 
+                                {% empty %}
+                                <tr>
+                                    <td colspan="7">No packets available.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+            </table>
+          </div>
+          <nav class="flex flex-col md:flex-row justify-between items-start md:items-center space-y-3 md:space-y-0 p-4" aria-label="Table navigation">
+              <span class="text-sm font-normal text-gray-500 dark:text-gray-400">
+                  Showing
+                  <span class="font-semibold text-gray-900 dark:text-white">
+                      {{ page_obj.start_index }}
+                      -
+                      {{ page_obj.end_index }}
+                  </span>
+                  of
+                  <span class="font-semibold text-gray-900 dark:text-white">{{ page_obj.paginator.count }}</span>
+              </span>
+              <ul class="inline-flex items-stretch -space-x-px">
+                  {% if page_obj.has_previous %}
+                      <li>
+                          <a href="?page=1" class="flex items-center justify-center h-full py-1.5 px-3 ml-0 text-gray-500 bg-white rounded-l-lg border border-gray-300 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white">
+                              <span>First</span>
+                              
+                          </a>
+                      </li>
+                      <li>
+                          <a href="?page={{ page_obj.previous_page_number }}" class="flex items-center justify-center text-sm py-2 px-3 leading-tight text-gray-500 bg-white border border-gray-300 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white">Previous</a>
+                      </li>
+                  {% endif %}
+                  
+                  {% if page_obj.has_next %}
+                      <li>
+                          <a href="?page={{ page_obj.next_page_number }}" class="flex items-center justify-center text-sm py-2 px-3 leading-tight text-gray-500 bg-white border border-gray-300 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white">Next</a>
+                      </li>
+                      <li>
+                          <a href="?page={{ page_obj.paginator.num_pages }}" class="flex items-center justify-center h-full py-1.5 px-3 leading-tight text-gray-500 bg-white rounded-r-lg border border-gray-300 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white">
+                              <span class="">Last</span>
+                             
+                          </a>
+                      </li>
+                  {% endif %}
+              </ul>
+          </nav>
+        </div>
+    </div>
+    </section>
+{% endblock content %}

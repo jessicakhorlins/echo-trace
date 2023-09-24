@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Packet List</title>
+</head>
+<body>
+    <h1>Packet List - {{pcap_file.name}}</h1>
+    <p>{{packets|length}} packets</p>
+    <table>
+        <thead>
+            <tr>
+                <th>IP Address</th>
+                <th>Destination IP Address</th>
+                <th>Port</th>
+                <th>Protocol</th>
+                <th>Timestamp</th>
+                <th>HTTP Request</th>
+                <th>DNS Information</th>
+                <th>Other Information</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for packet in packets %}
+            <tr>
+                <td>{{ packet.ip_address }}</td>
+                <td>{{ packet.dst_ip_address }}</td>
+                <td>{{ packet.port }}</td>
+                <td>{{ packet.protocol }}</td>
+                <td>{{ packet.timestamp }}</td>
+                <td>{{ packet.http_request }}</td>
+                <td>{{ packet.dns_info }}</td>
+                <td>{{ packet.other_info }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7">No packets available.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
