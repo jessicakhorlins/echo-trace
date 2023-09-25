@@ -7,3 +7,5 @@ sudo apt update
 sudo apt install wireshark
 
 sudo apt install tshark
+
+python3 manage.py runserver
