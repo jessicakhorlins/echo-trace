@@ -4,7 +4,7 @@ from django.db.models import Count, F
 
 
 class PCAPFile(models.Model):
-    name = models.CharField(max_length=255, unique=True)
+    name = models.CharField(max_length=255)
     file = models.FileField(upload_to="pcap_files/")
     file_type = models.CharField(max_length=20, blank=True, null=True)
     size = models.CharField(max_length=20, blank=True, null=True)
