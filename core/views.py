@@ -11,6 +11,19 @@ from .utils import detect_xss, detect_sql_injection, detect_dos, detect_brute_fo
 from django.db.models import Q
 from silk.profiling.profiler import silk_profile
 from django.core.paginator import Paginator
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
+from django.http import JsonResponse
+from core.tasks import analyse_pcap_task
+from celery.result import AsyncResult
+
+
+def get_task_status(request, pcap_file_id):
+    status = PCAPFile.objects.get(id=pcap_file_id).process_status
+    if status:
+        return JsonResponse({'status': 'SUCCESS'})
+    else:
+        return JsonResponse({'status': 'PENDING'})
 
 
 @login_required
@@ -125,10 +138,10 @@ def dashboard(request):
         [n for n in NetworkPacket.objects.filter(owner=user) if n.request_uri is None]
     )
 
-    is_brute_force = NetworkPacket.objects.filter(is_brute_force=True).count()
-    is_dos = NetworkPacket.objects.filter(is_dos=True).count()
-    is_sql_injection = NetworkPacket.objects.filter(is_sql_injection=True).count()
-    is_xss = NetworkPacket.objects.filter(is_xss=True).count()
+    is_brute_force = NetworkPacket.objects.filter(is_brute_force=True, owner=user).count()
+    is_dos = NetworkPacket.objects.filter(is_dos=True, owner=user).count()
+    is_sql_injection = NetworkPacket.objects.filter(is_sql_injection=True, owner=user).count()
+    is_xss = NetworkPacket.objects.filter(is_xss=True, owner=user).count()
 
     pie = [is_brute_force, is_dos, is_sql_injection, is_xss]
 
@@ -182,7 +195,7 @@ def uploads(request):
     user = request.user
     files = PCAPFile.objects.filter(owner=user)
     context = {"files": files, "user": user}
-    template = "dashboard.html"
+    template = "uploads.html"
     return render(request, template, context)
 
 
@@ -216,7 +229,11 @@ def upload_pcap(request):
 @login_required
 def analyse_pcap(request, file_id):
     import time
+    from time import gmtime, strftime
     start_time = time.time()
+
+    channel_layer = get_channel_layer()
+    log_group = "log_%s" % str(file_id)
     
     pcap_file = PCAPFile.objects.get(id=file_id)
     cap = pyshark.FileCapture(pcap_file.file.path)
@@ -227,104 +244,10 @@ def analyse_pcap(request, file_id):
     is_sql_injection_selected = "sql_injection" in request.GET
     is_xss_selected = "xss" in request.GET
 
-    for packet in cap:
-        if "IP" in packet:
-            # Convert packet.sniff_time to a valid datetime
-            timestamp = packet.sniff_time
-            timestamp = make_aware(timestamp)
-
-        if "http" in packet:
-            http = packet.http
-            ip = packet.ip
-
-            # Extract relevant HTTP information
-            request_method = (
-                http.request_method if hasattr(http, "request_method") else "N/A"
-            )
-            request_uri = (
-                http.request_full_uri if hasattr(http, "request_full_uri") else "N/A"
-            )
-            request_line = http.request_line if hasattr(http, "request_line") else "N/A"
-            host = http.host if hasattr(http, "host") else "N/A"
-            user_agent = http.user_agent if hasattr(http, "user_agent") else "N/A"
-            referer = http.referer if hasattr(http, "referer") else "N/A"
-            response_code = (
-                http.response_code if hasattr(http, "response_code") else 000
-            )
-            response_version = (
-                http.response_version if hasattr(http, "response_version") else "N/A"
-            )
-            request_date = http.date if hasattr(http, "date") else "N/A"
-            server = http.server if hasattr(http, "server") else "N/A"
-
-            ip_address = ip.addr if hasattr(ip, "addr") else "0.0.0.0"
-            dst_ip_address = ip.dst_host if hasattr(ip, "dst_host") else "0.0.0.0"
-            source_port = (
-                packet[packet.transport_layer].srcport
-                if hasattr(packet[packet.transport_layer], "srcport")
-                else 0
-            )
-            port = (
-                packet[packet.transport_layer].dstport
-                if hasattr(packet[packet.transport_layer], "dstport")
-                else 0
-            )
-            protocol = (
-                packet.transport_layer
-                if hasattr(packet, "transport_layer")
-                else "Unknown"
-            )
-
-            try:
-                dns_info = packet.dns.qry_name
-            except:
-                dns_info = "N/A"
-
-            network_packet = NetworkPacket.objects.create(
-                timestamp=timestamp,
-                ip_address=ip_address,
-                dst_ip_address=dst_ip_address,
-                source_port=source_port,
-                port=port,
-                protocol=protocol,
-                request_method=request_method,
-                request_uri=request_uri,
-                host=host,
-                user_agent=user_agent,
-                referer=referer,
-                response_code=response_code,
-                response_version=response_version,
-                dns_info=dns_info,
-                owner=user,
-                pcap_file=pcap_file,
-            )
-            network_packet.save()
-
-            print(request_uri)
-
-    cap.close()
-
-    for packet in NetworkPacket.objects.filter(pcap_file=pcap_file):
-        if packet.request_uri:
-            if is_xss_selected:
-                if detect_xss(packet.request_uri):
-                    packet.is_xss = True
-                    packet.save()
-
-            if is_sql_injection_selected:
-                if detect_sql_injection(packet.request_uri):
-                    packet.is_sql_injection = True
-                    packet.save()
-
-            if is_brute_force_selected:
-                if detect_brute_force(packet.request_uri, max_attempts=5):
-                    packet.is_brute_force = True
-                    packet.save()
-
-        if is_dos_selected:
-            if detect_dos(packet.ip_address, packet.dst_ip_address):
-                packet.is_dos = True
-                packet.save()
+    task_id = analyse_pcap_task.delay(file_id, user.id, is_dos_selected, is_sql_injection_selected, is_xss_selected, is_brute_force_selected)
+    print(task_id)
+    pcap_file.task_id = task_id
+    pcap_file.save()
 
     end_time = time.time()
     execution_time = end_time - start_time
@@ -340,8 +263,7 @@ def analyse_pcap(request, file_id):
     print("CPU Usage:", cpu_usage, "%")
     print("Memory Usage:", memory_usage, "%")
 
-
-    return redirect("packet_list", file_id=pcap_file.id)
+    return JsonResponse({"message": "Request completed", "status": "success"})
 
 
 @silk_profile(name="Packet List")
@@ -395,6 +317,7 @@ def file_detail(request, file_id):
             "user": user,
             "pie": pie,
             "ip_info": ip_info,
+            "log_name": str(pcap_file.id),
         },
     )
 

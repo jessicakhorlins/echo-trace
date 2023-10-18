@@ -3,6 +3,7 @@ from . import views
 
 urlpatterns = [
     path("", views.dashboard, name="dashboard"),
+    path("check_task_status/<pcap_file_id>/", views.get_task_status, name="get_task_status"),
     path("upload/", views.upload_pcap, name="upload_pcap"),
     path("uploads/", views.uploads, name="uploads"),
     path("file/<file_id>/<ip>/", views.ip_details, name="ip_details"),

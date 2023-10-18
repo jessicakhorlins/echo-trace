@@ -16,12 +16,16 @@
 {% block content %}
 
 <section class="bg-gray-50 dark:bg-gray-900 p-3 sm:p-5">
-  <div class="mx-auto max-w-screen-xl px-4 lg:px-12">
+  <div class="bcnt mx-auto max-w-screen-xl px-4 lg:px-12">
     <div class="mb-4 grid gap-6 grid-cols-2">
       <div class="w-full bg-white rounded-lg shadow dark:bg-gray-800 p-4 md:p-6">
+        
+
         <h1 class="mb-4 text-2xl font-semibold">{{pcap_file.name}}</h1>
         <p class="mb-4 font-medium text-md">{{packets|length}} packets</p>
 
+        <div id="mb-4 font-medium text-md text-red-800 task-status">Processing status: Pending</div>
+        <br>
         <dl>
           <dt class="mb-2 font-semibold leading-none text-gray-900 dark:text-white">File Type</dt>
           <dd class="mb-4 font-light text-gray-500 sm:mb-5 dark:text-gray-400">
@@ -46,7 +50,7 @@
         </dl>
 
         <div class="mb-4 flex">
-          <button data-modal-toggle="filterModal" class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none dark:focus:ring-blue-800">New Analysis</button>
+          <button data-modal-toggle="processModal" class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none dark:focus:ring-blue-800">New Analysis</button>
           <a href="{% url 'delete_file' pcap_file.id %}" class="focus:outline-none text-white bg-red-700 hover:bg-red-800 focus:ring-4 focus:ring-red-300 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-red-600 dark:hover:bg-red-700 dark:focus:ring-red-900">Delete</a>
         </div>
 
@@ -294,6 +298,9 @@
 </section>
 
 {% include 'select_analysis.html' %}
+<button data-modal-toggle="processModal" class="hidden" id="filterTrigger"></button>
+
+{{ log_name|json_script:"log-name" }}
 
 <script>
     // ApexCharts options and config
@@ -451,5 +458,155 @@
     map.fitBounds(L.featureGroup(markers).getBounds());
 
   </script>
+
+<script>
+  $("#startprocessing").click(async function() {
+  $("#filterTrigger").click();
+  $(".bcnt").prepend(`<div id="postprocess" class="mt-10 text-center">
+          <div role="status">
+              <svg aria-hidden="true" class="inline w-8 h-8 mr-2 text-gray-200 animate-spin dark:text-gray-600 fill-blue-600" viewBox="0 0 100 101" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z" fill="currentColor"/>
+                  <path d="M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z" fill="currentFill"/>
+              </svg>
+              <span class="sr-only">Loading...</span>
+          </div>
+           <p class="mt-4 font-bold">Analyzing packets...</p>
+      </div>
+      <br>
+  
+      <div class="w-full bg-gray-200 rounded-full dark:bg-gray-700">
+          <div id="progressbar" class="bg-blue-600 text-xs font-medium text-blue-100 text-center p-0.5 leading-none rounded-full" style="width: 0%"> 0%</div>
+      </div>
+  
+      <ol class="relative border-l border-gray-200 dark:border-gray-700" id="logs">
+      </ol>`);
+
+  try {
+    // Wrap the AJAX request in a Promise
+    const response = await new Promise(function(resolve, reject) {
+      $.ajax({
+        url: "{% url 'analyse_pcap' pcap_file.id %}",
+        data: $("#processModal").serialize(),
+        cache: false,
+        success: function(data) {
+          resolve(data);
+        },
+        error: function(data) {
+          reject(data.responseText);
+        },
+      });
+    });
+
+    // Continue with your logic after the request is completed
+    if (response.status === "success") {
+      console.log("Job completed!");
+    } else {
+      console.log("Job failed:", response);
+    }
+  } catch (error) {
+    console.error("Error:", error);
+  }
+});
+
+/*
+  $("#startprocessing").click(function() {
+    $("#filterTrigger").click();
+    $(".bcnt").prepend(
+  `
+   <div id="postprocess" class="mt-10 text-center">
+          <div role="status">
+              <svg aria-hidden="true" class="inline w-8 h-8 mr-2 text-gray-200 animate-spin dark:text-gray-600 fill-blue-600" viewBox="0 0 100 101" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z" fill="currentColor"/>
+                  <path d="M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z" fill="currentFill"/>
+              </svg>
+              <span class="sr-only">Loading...</span>
+          </div>
+           <p class="mt-4 font-bold">Analyzing packets...</p>
+      </div>
+      <br>
+  
+      <div class="w-full bg-gray-200 rounded-full dark:bg-gray-700">
+          <div id="progressbar" class="bg-blue-600 text-xs font-medium text-blue-100 text-center p-0.5 leading-none rounded-full" style="width: 0%"> 0%</div>
+      </div>
+  
+      <ol class="relative border-l border-gray-200 dark:border-gray-700" id="logs">
+      </ol>
+  
+  `);
+    $.ajax({
+      url: "{% url 'analyse_pcap' pcap_file.id %}",
+      data: $("#processModal").serialize(),
+      cache: false,
+      type: 'GET',
+      complete: function(data) {
+        if (data.status == "success") {
+          console.log("Job completed!");
+        }
+      },
+      error: function(data) {
+        alert(data.responseText);
+      },
+    });
+  });
+  */
+
+  const logName = JSON.parse(document.getElementById('log-name').textContent);
+  
+          const chatSocket = new WebSocket(
+              'wss://'
+              + window.location.host
+              + '/ws/log/'
+              + logName
+              + '/'
+          );
+  
+          chatSocket.onmessage = function(e) {
+              const data = JSON.parse(e.data);
+  
+              html = `
+              <li class="mb-2 ml-4">
+                  <div class="absolute w-3 h-3 bg-gray-200 rounded-full mt-1.5 -left-1.5 border border-white dark:border-gray-900 dark:bg-gray-700"></div>
+                  <time class="mb-1 text-xs font-normal leading-none text-gray-400 dark:text-gray-500">${data.time}</time>
+                  <h3 class="text-sm font-semibold text-gray-900 dark:text-white">${data.status}</h3>
+              </li>
+              `
+              $("#progressbar").css("width", `${data.perc}%`);
+              $("#progressbar").text(`${data.perc}%`);
+  
+              $("#logs").prepend(html);
+          };
+  
+          chatSocket.onclose = function(e) {
+              console.error('Chat socket closed unexpectedly');
+          };
+  
+    </script>
+
+<script>
+  function checkTaskStatus(taskId) {
+      const taskStatusElement = document.getElementById('task-status');
+      const taskResultElement = document.getElementById('task-result');
+
+      const interval = setInterval(function () {
+          $.ajax({
+              url: `/check_task_status/${taskId}`,
+              method: 'GET',
+              success: function (data) {
+                  if (data.status === 'SUCCESS') {
+                      taskStatusElement.textContent = 'Task status: Success';
+                      clearInterval(interval);  
+                  } else if (data.status === 'FAILURE') {
+                      taskStatusElement.textContent = 'Task status: Failed';
+                      clearInterval(interval); 
+                  }
+              },
+          });
+      }, 5000);  
+  }
+
+  const taskId = "{{pcap_file.id}}"; 
+  checkTaskStatus(taskId);
+</script>
+
   
 {% endblock content %}

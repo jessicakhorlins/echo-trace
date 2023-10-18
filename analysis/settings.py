@@ -44,6 +44,7 @@ CORS_ALLOWED_ORIGINS = [
 # Application definition
 
 INSTALLED_APPS = [
+    "daphne",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -85,7 +86,20 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = "analysis.wsgi.application"
+ASGI_APPLICATION = "analysis.asgi.application"
 
+os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("127.0.0.1", 6379)],
+            "capacity": 150000,  # default 100
+            "expiry": 1000,  # default 60
+        },
+    },
+}
 
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
@@ -158,3 +172,6 @@ LOGIN_URL = "/account/signin/"
 
 SILKY_PYTHON_PROFILER = True
 SILKY_PYTHON_PROFILER_BINARY = True
+
+CELERY_BROKER_URL = "redis://localhost:6379"
+CELERY_RESULT_BACKEND = "redis://localhost:6379"

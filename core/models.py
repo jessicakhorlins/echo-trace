@@ -10,6 +10,8 @@ class PCAPFile(models.Model):
     size = models.CharField(max_length=20, blank=True, null=True)
     date_uploaded = models.DateTimeField(auto_now_add=True)
     owner = models.ForeignKey(User, on_delete=models.CASCADE)
+    task_id = models.TextField(null=True, blank=True)
+    process_status = models.BooleanField(default=False)
 
     def packets(self):
         return NetworkPacket.objects.filter(pcap_file=self)
