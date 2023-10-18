@@ -24,7 +24,7 @@
         <h1 class="mb-4 text-2xl font-semibold">{{pcap_file.name}}</h1>
         <p class="mb-4 font-medium text-md">{{packets|length}} packets</p>
 
-        <div id="mb-4 font-medium text-md text-red-800 task-status">Processing status: Pending</div>
+        <div id="mb-4 font-medium text-md text-red-800 task-status">Processing status: {% if pcap_file.process_status %}Completed{% else %}Pending{% endif %}</div>
         <br>
         <dl>
           <dt class="mb-2 font-semibold leading-none text-gray-900 dark:text-white">File Type</dt>
